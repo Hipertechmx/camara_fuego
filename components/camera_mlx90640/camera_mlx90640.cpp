@@ -1,6 +1,7 @@
 #include "camera_mlx90640.h"
 #include "mlx90640_image.h"
 #include "SPIFFS.h"
+#include <math.h>
 
 
 uint8_t MLX90640_address = 0x33;  // Default 7-bit unshifted address of the
@@ -12,19 +13,17 @@ uint8_t MLX90640_address = 0x33;  // Default 7-bit unshifted address of the
 #define ROWS   24
 #define COLS_2 (COLS * 2)
 #define ROWS_2 (ROWS * 2)
-#define INTERPOLATED_COLS 96
-#define INTERPOLATED_ROWS 72
-
 
 float pixelsArraySize = COLS * ROWS;
 float pixels[COLS * ROWS];
-float pixels_2[INTERPOLATED_COLS * INTERPOLATED_ROWS];
+float pixels_2[COLS_2 * ROWS_2];
 float reversePixels[COLS * ROWS];
 uint16_t pixels_colored [ROWS][COLS] ;
 byte speed_setting = 2;  // High is 1 , Low is 2
 bool reverseScreen = false;
 
-
+#define INTERPOLATED_COLS 32
+#define INTERPOLATED_ROWS 32
 static const char * TAG = "MLX90640" ;
 static float mlx90640To[COLS * ROWS];
 paramsMLX90640 mlx90640;
@@ -227,58 +226,62 @@ namespace esphome{
         }
 
 
-     void MLX90640::mlx_update(){
-    for (byte x = 0; x < speed_setting; x++) {
-        uint16_t mlx90640Frame[834];
-        int status = MLX90640_GetFrameData(MLX90640_address, mlx90640Frame);
-        if (status < 0) {
-            ESP_LOGE(TAG,"GetFrame Error: %d",status);
-        }
+      void MLX90640::mlx_update(){
+            for (byte x = 0; x < speed_setting; x++)  // x < 2 Read both subpages
+            {
+                uint16_t mlx90640Frame[834];
+                int status = MLX90640_GetFrameData(MLX90640_address, mlx90640Frame);
+                if (status < 0) {
+                ESP_LOGE(TAG,"GetFrame Error: %d",status);
+                }
 
-        float vdd = MLX90640_GetVdd(mlx90640Frame, &mlx90640);
-        float Ta  = MLX90640_GetTa(mlx90640Frame, &mlx90640);
-        float tr = Ta - TA_SHIFT;
-        float emissivity = 0.95;
-        MLX90640_CalculateTo(mlx90640Frame, &mlx90640, emissivity, tr, pixels);
-        int mode_ = MLX90640_GetCurMode(MLX90640_address);
-        MLX90640_BadPixelsCorrection((&mlx90640)->brokenPixels, pixels, mode_, &mlx90640);
-    }
+                float vdd = MLX90640_GetVdd(mlx90640Frame, &mlx90640);
+                float Ta  = MLX90640_GetTa(mlx90640Frame, &mlx90640);
+                float tr = Ta - TA_SHIFT;  // Reflected temperature based on the sensor ambient
+                                    // temperature.  根据传感器环境温度反射温度
+                float emissivity = 0.95;
+               MLX90640_CalculateTo(mlx90640Frame, &mlx90640, emissivity, tr, pixels);  // save pixels temp to array (pixels).
+                                            // 保存像素temp到数组(像素)
+                int mode_ = MLX90640_GetCurMode(MLX90640_address);
+                // amendment.  修正案
+                MLX90640_BadPixelsCorrection((&mlx90640)->brokenPixels, pixels, mode_, &mlx90640);
+            }
 
-    filter_outlier_pixel(pixels, sizeof(pixels) / sizeof(pixels[0]), this->filter_level_);
+                filter_outlier_pixel(pixels,sizeof(pixels) / sizeof(pixels[0]), this->filter_level_ );
+              //medianTemp = (mlx90640To[165]+mlx90640To[180]+mlx90640To[176]+mlx90640To[192]) / 4.0;  // Temp in Center - based on 4 pixels
+                medianTemp = (pixels[165]+pixels[180]+pixels[176]+pixels[192]) / 4.0;
+                max_v      = MINTEMP;
+                min_v      = MAXTEMP;
+                int spot_v = pixels[360];
+                spot_v     = pixels[768 / 2];
+                // while(1);
+                float total =0 ;
+                for (int itemp = 0; itemp < sizeof(pixels) / sizeof(pixels[0]); itemp++) {
+                    if (pixels[itemp] > max_v) {
+                        max_v = pixels[itemp];
+                    }
+                    if (pixels[itemp] < min_v) {
+                        min_v = pixels[itemp];
+                    }
+                    total += pixels[itemp] ;
+                }
+                meanTemp = total/((sizeof(pixels) / sizeof(pixels[0])));
 
-    medianTemp = (pixels[165]+pixels[180]+pixels[176]+pixels[192]) / 4.0;
-    max_v = MINTEMP;
-    min_v = MAXTEMP;
-
-    float total = 0;
-    for (int i = 0; i < COLS * ROWS; i++) {
-        if (pixels[i] > max_v) max_v = pixels[i];
-        if (pixels[i] < min_v) min_v = pixels[i];
-        total += pixels[i];
-    }
-    meanTemp = total / (COLS * ROWS);
-
-    // 🚨 Aplicar interpolación a 96x72
-    interpolate_image(pixels, ROWS, COLS, pixels_2, INTERPOLATED_ROWS, INTERPOLATED_COLS);
-
-    // 🚨 Usar la imagen interpolada para exportar a SPIFFS
-    ThermalImageToWeb(pixels_2, camColors, min_v, max_v);
-
-    if (max_v > max_cam_v || max_v < min_cam_v) {
-        ESP_LOGE(TAG, "MLX READING VALUE ERRORS");
-        dataValid = false;
-    } else {
-        ESP_LOGI(TAG, "Min temperature : %.2f C ", min_v);
-        ESP_LOGI(TAG, "Max temperature : %.2f C ", max_v);
-        ESP_LOGI(TAG, "Mean temperature : %.2f C ", meanTemp);
-        ESP_LOGI(TAG, "Median temperature : %.2f C ", medianTemp);
-        dataValid = true;
-    }
-
-    loopTime = millis();
-    endTime  = loopTime;
-    fps      = 1000 / (endTime - startTime);
-}
+                 ThermalImageToWeb(pixels,camColors,  min_v,  max_v); // Save the image on the local files
+                if (max_v > max_cam_v | max_v < min_cam_v) {
+                    ESP_LOGE(TAG, "MLX READING VALUE ERRORS");
+                    dataValid = false ;
+                } else {
+                    ESP_LOGI(TAG, "Min temperature : %.2f C ",min_v);
+                    ESP_LOGI(TAG, "Max temperature : %.2f C ",max_v);
+                    ESP_LOGI(TAG, "Mean temperature : %.2f C ",meanTemp);
+                    ESP_LOGI(TAG, "Median temperature : %.2f C ",medianTemp);
+                    dataValid = true ;
+                }
+                loopTime = millis();
+                endTime  = loopTime;
+                fps      = 1000 / (endTime - startTime);
+      }
         
         
 
