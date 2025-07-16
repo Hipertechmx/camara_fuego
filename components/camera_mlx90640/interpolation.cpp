@@ -1,5 +1,6 @@
 
 #include <math.h>
+#include <algorithm>
 
 // Interpolación bilineal simple
 void interpolate_image(float *src, uint8_t src_rows, uint8_t src_cols,
