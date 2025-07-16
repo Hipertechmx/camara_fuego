@@ -84,6 +84,16 @@ std::string payload ;
 
 long loopTime, startTime, endTime, fps;
 float get_point(float *p, uint8_t rows, uint8_t cols, int8_t x, int8_t y);
+
+void apply_threshold_filter(float *pixels, int cols, int rows, float threshold) {
+  for (int i = 0; i < cols * rows; i++) {
+    if (pixels[i] > threshold) {
+      pixels[i] = threshold;
+    }
+  }
+}
+
+
 void set_point(float *p, uint8_t rows, uint8_t cols, int8_t x, int8_t y,
                float f);
 void get_adjacents_1d(float *src, float *dest, uint8_t rows, uint8_t cols,
@@ -261,7 +271,9 @@ namespace esphome{
     interpolate_image(pixels, ROWS, COLS, pixels_2, INTERPOLATED_ROWS, INTERPOLATED_COLS);
 
     // 🚨 Usar la imagen interpolada para exportar a SPIFFS
-    ThermalImageToWeb(pixels_2, camColors, min_v, max_v);
+    
+    apply_threshold_filter(pixels_2, INTERPOLATED_COLS, INTERPOLATED_ROWS, 40.0);
+ThermalImageToWeb(pixels_2, camColors, min_v, max_v);
 
     if (max_v > max_cam_v || max_v < min_cam_v) {
         ESP_LOGE(TAG, "MLX READING VALUE ERRORS");
