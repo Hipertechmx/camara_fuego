@@ -16,9 +16,9 @@ void interpolate_image(float *src, uint8_t src_rows, uint8_t src_cols,
       float dx = gx - gxi;
 
       float a = src[gyi * src_cols + gxi];
-      float b = src[gyi * src_cols + min(gxi + 1, src_cols - 1)];
+      float b = src[gyi * src_cols + std::min(gxi + 1, src_cols - 1)];
       float c = src[min(gyi + 1, src_rows - 1) * src_cols + gxi];
-      float d = src[min(gyi + 1, src_rows - 1) * src_cols + min(gxi + 1, src_cols - 1)];
+      float d = src[min(gyi + 1, src_rows - 1) * src_cols + std::min(gxi + 1, src_cols - 1)];
 
       dest[y * dest_cols + x] = a * (1 - dx) * (1 - dy) +
                                 b * dx * (1 - dy) +
