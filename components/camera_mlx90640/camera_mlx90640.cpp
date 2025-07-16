@@ -15,6 +15,7 @@ uint8_t MLX90640_address = 0x33;  // Default 7-bit unshifted address of the
 #define INTERPOLATED_COLS 96
 #define INTERPOLATED_ROWS 96
 
+
 float pixelsArraySize = COLS * ROWS;
 float pixels[COLS * ROWS];
 float pixels_2[COLS_2 * ROWS_2];
