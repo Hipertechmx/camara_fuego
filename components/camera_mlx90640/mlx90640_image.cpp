@@ -16,8 +16,8 @@ void ThermalImageToWeb(float mlx90640To[],const uint16_t camColors[], float MinT
   int green = 0;
   int blue = 0;
   
-  int WIDTH = 32;
-  int HEIGHT = 24;
+  int WIDTH = 96;
+  int HEIGHT = 72;
 
   extrabytes = 4 - ((WIDTH * 3) % 4);                 // How many bytes of padding to add to each
                                                     // horizontal line - the size of which must
