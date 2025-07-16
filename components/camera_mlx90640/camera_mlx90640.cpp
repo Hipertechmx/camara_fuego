@@ -13,11 +13,11 @@ uint8_t MLX90640_address = 0x33;  // Default 7-bit unshifted address of the
 #define COLS_2 (COLS * 2)
 #define ROWS_2 (ROWS * 2)
 #define INTERPOLATED_COLS 96
-#define INTERPOLATED_ROWS 96
+#define INTERPOLATED_ROWS 72
 
 float pixelsArraySize = COLS * ROWS;
 float pixels[COLS * ROWS];
-float pixels_2[COLS_2 * ROWS_2];
+float pixels_2[INTERPOLATED_COLS * INTERPOLATED_ROWS];
 float reversePixels[COLS * ROWS];
 uint16_t pixels_colored [ROWS][COLS] ;
 byte speed_setting = 2;  // High is 1 , Low is 2
