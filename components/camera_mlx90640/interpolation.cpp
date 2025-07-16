@@ -25,4 +25,3 @@ void interpolate_image(float *src, uint8_t src_rows, uint8_t src_cols,
     }
   }
 }
-}
