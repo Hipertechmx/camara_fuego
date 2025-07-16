@@ -21,8 +21,8 @@ uint16_t pixels_colored [ROWS][COLS] ;
 byte speed_setting = 2;  // High is 1 , Low is 2
 bool reverseScreen = false;
 
-#define INTERPOLATED_COLS 32
-#define INTERPOLATED_ROWS 32
+#define INTERPOLATED_COLS 96
+#define INTERPOLATED_ROWS 96
 static const char * TAG = "MLX90640" ;
 static float mlx90640To[COLS * ROWS];
 paramsMLX90640 mlx90640;
