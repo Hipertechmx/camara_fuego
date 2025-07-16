@@ -12,6 +12,8 @@ uint8_t MLX90640_address = 0x33;  // Default 7-bit unshifted address of the
 #define ROWS   24
 #define COLS_2 (COLS * 2)
 #define ROWS_2 (ROWS * 2)
+#define INTERPOLATED_COLS 96
+#define INTERPOLATED_ROWS 96
 
 float pixelsArraySize = COLS * ROWS;
 float pixels[COLS * ROWS];
@@ -21,8 +23,7 @@ uint16_t pixels_colored [ROWS][COLS] ;
 byte speed_setting = 2;  // High is 1 , Low is 2
 bool reverseScreen = false;
 
-#define INTERPOLATED_COLS 96
-#define INTERPOLATED_ROWS 96
+
 static const char * TAG = "MLX90640" ;
 static float mlx90640To[COLS * ROWS];
 paramsMLX90640 mlx90640;
