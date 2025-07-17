@@ -83,6 +83,46 @@ const uint16_t camColors[] = {
 std::string payload ;
 
 long loopTime, startTime, endTime, fps;
+
+void smooth_filter(float *pixels, int rows, int cols, float strength = 0.2) {
+    float copy[INTERPOLATED_ROWS * INTERPOLATED_COLS];
+    memcpy(copy, pixels, sizeof(float) * rows * cols);
+    for (int y = 1; y < rows - 1; y++) {
+        for (int x = 1; x < cols - 1; x++) {
+            float center = get_point(copy, rows, cols, x, y);
+            float sum = 0.0;
+            int count = 0;
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dx = -1; dx <= 1; dx++) {
+                    float neighbor = get_point(copy, rows, cols, x + dx, y + dy);
+                    sum += neighbor;
+                    count++;
+                }
+            }
+            float average = sum / count;
+            float new_val = center * (1.0 - strength) + average * strength;
+            set_point(pixels, rows, cols, x, y, new_val);
+        }
+    }
+}
+
+void debanding_filter(float *pixels, int rows, int cols, float threshold = 0.5) {
+    for (int y = 1; y < rows - 1; y++) {
+        for (int x = 1; x < cols - 1; x++) {
+            float current = get_point(pixels, rows, cols, x, y);
+            float left = get_point(pixels, rows, cols, x - 1, y);
+            float right = get_point(pixels, rows, cols, x + 1, y);
+            float up = get_point(pixels, rows, cols, x, y - 1);
+            float down = get_point(pixels, rows, cols, x, y + 1);
+            float diff = fabs(current - (left + right + up + down) / 4.0);
+            if (diff > threshold) {
+                float avg = (left + right + up + down) / 4.0;
+                set_point(pixels, rows, cols, x, y, avg);
+            }
+        }
+    }
+}
+
 float get_point(float *p, uint8_t rows, uint8_t cols, int8_t x, int8_t y);
 void set_point(float *p, uint8_t rows, uint8_t cols, int8_t x, int8_t y,
                float f);
@@ -259,6 +299,10 @@ namespace esphome{
 
     // 🚨 Aplicar interpolación a 96x72
     interpolate_image(pixels, ROWS, COLS, pixels_2, INTERPOLATED_ROWS, INTERPOLATED_COLS);
+// Filtros postprocesado
+debanding_filter(pixels_2, INTERPOLATED_ROWS, INTERPOLATED_COLS);
+smooth_filter(pixels_2, INTERPOLATED_ROWS, INTERPOLATED_COLS);
+
 
     // 🚨 Usar la imagen interpolada para exportar a SPIFFS
     ThermalImageToWeb(pixels_2, camColors, min_v, max_v);
