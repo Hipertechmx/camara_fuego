@@ -84,6 +84,16 @@ std::string payload ;
 
 long loopTime, startTime, endTime, fps;
 float get_point(float *p, uint8_t rows, uint8_t cols, int8_t x, int8_t y);
+
+void apply_threshold_filter(float *pixels, int cols, int rows, float threshold) {
+  for (int i = 0; i < cols * rows; i++) {
+    if (pixels[i] > threshold) {
+      pixels[i] = threshold;
+    }
+  }
+}
+
+
 void set_point(float *p, uint8_t rows, uint8_t cols, int8_t x, int8_t y,
                float f);
 void get_adjacents_1d(float *src, float *dest, uint8_t rows, uint8_t cols,
@@ -95,6 +105,21 @@ float bicubicInterpolate(float p[], float x, float y);
 void interpolate_image(float *src, uint8_t src_rows, uint8_t src_cols,
                        float *dest, uint8_t dest_rows, uint8_t dest_cols);
 void drawpixels(float *p, uint8_t rows, uint8_t cols, uint8_t boxWidth,uint8_t boxHeight, boolean showVal);
+
+
+void apply_edge_detection(float *pixels, int cols, int rows) {
+  for (int y = 1; y < rows - 1; y++) {
+    for (int x = 1; x < cols - 1; x++) {
+      float center = get_point(pixels, rows, cols, x, y);
+      float gx = get_point(pixels, rows, cols, x+1, y) - get_point(pixels, rows, cols, x-1, y);
+      float gy = get_point(pixels, rows, cols, x, y+1) - get_point(pixels, rows, cols, x, y-1);
+      float gradient = sqrt(gx * gx + gy * gy);
+      if (gradient > 1.5) {
+        set_point(pixels, rows, cols, x, y, center + 5.0);  // Realce leve
+      }
+    }
+  }
+}
 
 namespace esphome{
     namespace mlx90640_app{
@@ -261,7 +286,10 @@ namespace esphome{
     interpolate_image(pixels, ROWS, COLS, pixels_2, INTERPOLATED_ROWS, INTERPOLATED_COLS);
 
     // 🚨 Usar la imagen interpolada para exportar a SPIFFS
-    ThermalImageToWeb(pixels_2, camColors, min_v, max_v);
+    
+    apply_threshold_filter(pixels_2, INTERPOLATED_COLS, INTERPOLATED_ROWS, 40.0);
+apply_edge_detection(pixels_2, INTERPOLATED_COLS, INTERPOLATED_ROWS);
+  ThermalImageToWeb(pixels_2, camColors, min_v, max_v);
 
     if (max_v > max_cam_v || max_v < min_cam_v) {
         ESP_LOGE(TAG, "MLX READING VALUE ERRORS");
@@ -419,3 +447,4 @@ void drawpixels(float *p, uint8_t rows, uint8_t cols, uint8_t boxWidth,uint8_t b
         }
     }
 }
+
